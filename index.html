@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Flip Tracker">
+<meta name="theme-color" content="#000000">
+<link rel="apple-touch-icon" href="icon.png">
+<title>iPhone Flip — Tracker</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600;700&display=swap');
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+body { background: #000; color: #fff; font-family: 'Inter', sans-serif; min-height: 100vh; padding-bottom: calc(70px + env(safe-area-inset-bottom)); }
+
+header { border-bottom: 1px solid #1a1a1a; padding: 16px 24px; padding-top: max(16px, env(safe-area-inset-top)); display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; background: rgba(0,0,0,.85); backdrop-filter: blur(12px); z-index: 100; }
+.logo { font-size: 12px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; display: flex; align-items: center; gap: 10px; }
+.logo-dot { width: 7px; height: 7px; border-radius: 50%; background: #fff; box-shadow: 0 0 8px #fff; animation: blink 2.5s infinite; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:.25} }
+.hdate { font-size: 11px; color: #444; font-family: 'JetBrains Mono', monospace; }
+
+main { max-width: 880px; margin: 0 auto; padding: 28px 18px; }
+.tab-page { display: none; }
+.tab-page.active { display: block; animation: fade .25s ease; }
+@keyframes fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+.sec { font-size: 10px; font-weight: 600; letter-spacing: .2em; text-transform: uppercase; color: #444; margin-bottom: 16px; margin-top: 6px; display: flex; align-items: center; gap: 12px; }
+.sec::after { content:''; flex: 1; height: 1px; background: #1a1a1a; }
+
+/* DASHBOARD */
+.hero-card { background: #0d0d0d; border: 1px solid #1e1e1e; border-radius: 16px; padding: 28px 30px 26px; margin-bottom: 28px; }
+.kpi-row { display: grid; grid-template-columns: repeat(3, 1fr); margin-bottom: 18px; padding-bottom: 20px; border-bottom: 1px solid #1e1e1e; }
+.kpi-col { padding: 0 22px; border-right: 1px solid #1e1e1e; }
+.kpi-col:first-child { padding-left: 0; }
+.kpi-col:last-child { border-right: none; padding-right: 0; }
+.kpi-label { font-size: 10px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: #555; margin-bottom: 9px; display: flex; align-items: center; gap: 6px; }
+.kpi-edit { background: none; border: 1px solid #2a2a2a; color: #4fc3f7; border-radius: 5px; width: 18px; height: 18px; font-size: 10px; cursor: pointer; line-height: 1; padding: 0; }
+.kpi-edit:hover { background: rgba(79,195,247,.1); }
+.kpi-val { font-size: 40px; font-weight: 800; color: #fff; line-height: 1; letter-spacing: -.02em; margin-bottom: 6px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.kpi-col:first-child .kpi-val { font-size: 44px; }
+.kpi-sub { font-size: 11px; color: #444; }
+
+.mini-row { display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 24px; font-family: 'JetBrains Mono', monospace; font-size: 12px; }
+.mini-stat { color: #555; }
+.mini-stat b { color: #fff; font-weight: 600; }
+.mini-stat.green b { color: #00e676; }
+
+.chart-outer { position: relative; }
+canvas#chart { display: block; width: 100%; cursor: crosshair; }
+.tooltip { position: absolute; top: 8px; pointer-events: none; background: #111; border: 1px solid #2a2a2a; border-radius: 10px; padding: 10px 14px; opacity: 0; transition: opacity .12s; transform: translateX(-50%); white-space: nowrap; z-index: 5; }
+.tt-label { font-size: 10px; color: #555; margin-bottom: 4px; text-transform: uppercase; letter-spacing: .1em; }
+.tt-marge { font-size: 20px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.tt-total { font-size: 11px; color: #555; margin-top: 5px; padding-top: 5px; border-top: 1px solid #222; }
+.chart-foot { text-align: center; font-size: 11px; color: #333; margin-top: 14px; padding-top: 12px; border-top: 1px solid #1a1a1a; }
+
+/* PARTS HERO */
+.parts-hero { background: #0d0d0d; border: 1px solid #1e1e1e; border-radius: 16px; padding: 26px 30px; margin-bottom: 24px; display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; }
+.ph-main { }
+.ph-label { font-size: 10px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: #555; margin-bottom: 9px; }
+.ph-val { font-size: 46px; font-weight: 800; line-height: 1; letter-spacing: -.02em; color: #4fc3f7; font-variant-numeric: tabular-nums; }
+.ph-sub { font-size: 12px; color: #444; margin-top: 6px; }
+
+/* CARDS */
+.grid { display: flex; flex-direction: column; gap: 10px; margin-bottom: 24px; }
+.card { background: #0d0d0d; border: 1px solid #1e1e1e; border-radius: 12px; overflow: hidden; transition: border-color .2s; }
+.card:hover { border-color: #2a2a2a; }
+.chead { display: grid; grid-template-columns: 1fr auto; align-items: center; padding: 15px 18px; gap: 10px; }
+.chead.clik { cursor: pointer; }
+.ctitle { font-size: 14px; font-weight: 700; font-family: 'JetBrains Mono', monospace; margin-bottom: 3px; }
+.ctitle small { color: #555; font-weight: 400; }
+.cmeta { font-size: 12px; color: #444; }
+.cright { display: flex; align-items: center; gap: 9px; flex-shrink: 0; }
+.badge { font-family: 'JetBrains Mono', monospace; font-size: 15px; font-weight: 700; padding: 5px 11px; border-radius: 8px; border: 1px solid #2a2a2a; background: #111; color: #fff; white-space: nowrap; }
+.badge.warn { color: #ffb300; border-color: rgba(255,179,0,.25); }
+.badge.neg  { color: #ff4444; border-color: rgba(255,68,68,.25); }
+.badge.blue { color: #4fc3f7; border-color: rgba(79,195,247,.25); }
+.pill { font-size: 10px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; border-radius: 20px; padding: 4px 9px; white-space: nowrap; }
+.p-enc { background: rgba(255,179,0,.1); color: #ffb300; border: 1px solid rgba(255,179,0,.25); }
+.p-rev { background: rgba(0,230,118,.1); color: #00e676; border: 1px solid rgba(0,230,118,.25); }
+.p-per { background: rgba(255,68,68,.1); color: #ff4444; border: 1px solid rgba(255,68,68,.25); }
+.barwrap { padding: 0 18px; }
+.bartrack { height: 2px; background: #1a1a1a; border-radius: 2px; overflow: hidden; }
+.barfill { height: 100%; background: #fff; border-radius: 2px; transition: width .5s ease; }
+.barfill.warn { background: #ffb300; } .barfill.neg { background: #ff4444; }
+.cbody { display: none; padding: 16px 18px 18px; border-top: 1px solid #1a1a1a; }
+.cbody.open { display: block; }
+.dgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(115px,1fr)); gap: 10px; margin-bottom: 14px; }
+.dl { font-size: 10px; color: #444; text-transform: uppercase; letter-spacing: .1em; margin-bottom: 3px; }
+.dv { font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 600; color: #fff; }
+.dv.m { color: #888; } .dv.a { color: #ffb300; } .dv.r { color: #ff4444; }
+.cactions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+.qty { display:flex; align-items:center; border:1px solid #2a2a2a; border-radius:8px; overflow:hidden; }
+.qty button { background:#111; border:none; color:#fff; width:30px; height:30px; cursor:pointer; font-size:16px; }
+.qty button:hover { background:#1e1e1e; }
+.qty span { min-width:32px; text-align:center; font-family:'JetBrains Mono',monospace; font-size:14px; font-weight:700; }
+
+.btn { font-family: 'Inter', sans-serif; font-size: 12px; font-weight: 500; border: 1px solid #222; background: #111; color: #fff; border-radius: 8px; padding: 7px 13px; cursor: pointer; transition: background .12s; }
+.btn:hover { background: #1e1e1e; }
+.btn-del { border-color: rgba(255,68,68,.25); color: #ff4444; }
+.btn-del:hover { background: rgba(255,68,68,.07); }
+.btn-blue { border-color: rgba(79,195,247,.3); color: #4fc3f7; }
+.btn-blue:hover { background: rgba(79,195,247,.08); }
+.btn-primary { background: #fff; color: #000; border-color: #fff; font-weight: 700; }
+.btn-primary:hover { background: #ddd; }
+
+.form-card { background: #0d0d0d; border: 1px solid #1e1e1e; border-radius: 12px; overflow: hidden; margin-bottom: 24px; }
+.ftoggle { width: 100%; background: none; border: none; color: #fff; font-family: 'Inter', sans-serif; font-size: 14px; font-weight: 600; padding: 17px 18px; text-align: left; cursor: pointer; display: flex; align-items: center; justify-content: space-between; transition: background .12s; }
+.ftoggle:hover { background: rgba(255,255,255,.025); }
+.ficon { font-size: 20px; color: #444; transition: transform .22s; }
+.ficon.open { transform: rotate(45deg); }
+.fbody { display: none; padding: 0 18px 20px; }
+.fbody.open { display: block; }
+.fgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px,1fr)); gap: 11px; margin-bottom: 13px; }
+.fg { display: flex; flex-direction: column; gap: 5px; }
+.fg label { font-size: 10px; color: #444; text-transform: uppercase; letter-spacing: .1em; font-weight: 600; }
+.fg input, .fg select { background: #111; border: 1px solid #2a2a2a; color: #fff; font-family: 'JetBrains Mono', monospace; font-size: 13px; border-radius: 8px; padding: 9px 11px; outline: none; -webkit-appearance: none; transition: border-color .12s; }
+.fg input:focus, .fg select:focus { border-color: #555; }
+.fg select option { background: #111; }
+.rrow { display: flex; gap: 8px; margin-bottom: 8px; align-items: center; }
+.rrow select, .rrow input { background: #111; border: 1px solid #2a2a2a; color: #fff; font-family: 'JetBrains Mono', monospace; font-size: 13px; border-radius: 8px; padding: 8px 10px; outline: none; -webkit-appearance: none; }
+.rrow select { flex: 2; } .rrow input { flex: 1; }
+.rdel { background: none; border: none; color: #444; font-size: 18px; cursor: pointer; padding: 0 4px; }
+.rdel:hover { color: #ff4444; }
+.addrep { width: 100%; background: none; border: 1px dashed #2a2a2a; color: #444; font-size: 12px; font-family: 'Inter', sans-serif; border-radius: 8px; padding: 7px; cursor: pointer; margin-bottom: 13px; transition: all .12s; }
+.addrep:hover { border-color: #555; color: #fff; }
+.fprev { font-size: 12px; color: #444; font-family: 'JetBrains Mono', monospace; }
+.fnote { font-size: 11px; color: #555; margin-bottom: 12px; line-height: 1.5; }
+
+.overlay { position: fixed; inset: 0; background: rgba(0,0,0,.82); display: flex; align-items: center; justify-content: center; z-index: 1000; opacity: 0; pointer-events: none; transition: opacity .18s; padding: 20px; }
+.overlay.open { opacity: 1; pointer-events: all; }
+.modal { background: #111; border: 1px solid #2a2a2a; border-radius: 14px; padding: 24px; width: min(92vw,400px); transform: scale(.95) translateY(10px); transition: transform .18s; max-height: 85vh; overflow-y: auto; }
+.overlay.open .modal { transform: scale(1) translateY(0); }
+.modal h3 { font-size: 16px; font-weight: 700; margin-bottom: 4px; }
+.modal p { font-size: 13px; color: #555; margin-bottom: 18px; line-height: 1.5; }
+.mform { display: flex; flex-direction: column; gap: 12px; }
+.mactions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 18px; }
+.use-opt { display:block; width:100%; text-align:left; background:#0d0d0d; border:1px solid #2a2a2a; color:#fff; border-radius:10px; padding:12px 14px; cursor:pointer; margin-bottom:8px; transition:all .12s; font-family:'JetBrains Mono',monospace; font-size:13px; font-weight:600; }
+.use-opt:hover { border-color:#4fc3f7; background:#141414; }
+.use-opt small { display:block; color:#555; font-size:11px; margin-top:2px; font-weight:400; }
+
+.toast { position: fixed; bottom: calc(80px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%) translateY(14px); background: #111; border: 1px solid #2a2a2a; color: #fff; font-size: 13px; border-radius: 10px; padding: 11px 18px; z-index: 2000; opacity: 0; transition: all .22s; pointer-events: none; white-space: nowrap; max-width: 90vw; }
+.toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+
+details summary { cursor: pointer; font-size: 12px; color: #444; list-style: none; user-select: none; }
+details summary::-webkit-details-marker { display: none; }
+details summary::before { content: '▶  '; font-size: 9px; }
+details[open] summary::before { content: '▼  '; }
+.reftbl { margin-top: 10px; border: 1px solid #1a1a1a; border-radius: 10px; overflow: hidden; }
+.reftbl table { width: 100%; border-collapse: collapse; font-family: 'JetBrains Mono', monospace; font-size: 12px; }
+.reftbl th { background: #0d0d0d; color: #444; font-size: 10px; letter-spacing: .1em; text-transform: uppercase; padding: 8px 11px; text-align: right; }
+.reftbl th:first-child { text-align: left; }
+.reftbl td { padding: 7px 11px; text-align: right; border-top: 1px solid #1a1a1a; color: #666; }
+.reftbl td:first-child { text-align: left; color: #fff; }
+
+.empty { text-align: center; padding: 32px 24px; color: #333; font-size: 13px; border: 1px dashed #1a1a1a; border-radius: 12px; }
+
+/* BOTTOM TAB BAR */
+.tabbar { position: fixed; bottom: 0; left: 0; right: 0; background: rgba(13,13,13,.92); backdrop-filter: blur(16px); border-top: 1px solid #1e1e1e; display: flex; z-index: 300; padding-bottom: env(safe-area-inset-bottom); }
+.tabbtn { flex: 1; background: none; border: none; color: #555; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; cursor: pointer; padding: 11px 0 9px; transition: color .15s; position: relative; }
+.tabbtn.active { color: #fff; }
+.tabbtn.active::before { content:''; position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: 28px; height: 2px; background: #fff; border-radius: 2px; }
+.tabbtn svg { width: 23px; height: 23px; }
+.tabbtn span { font-size: 10px; font-weight: 600; letter-spacing: .05em; }
+.tab-badge { position: absolute; top: 8px; right: calc(50% - 26px); background: #4fc3f7; color: #000; font-size: 9px; font-weight: 700; border-radius: 10px; padding: 1px 5px; min-width: 16px; text-align: center; }
+
+@media(max-width:560px) {
+  .kpi-row { grid-template-columns: 1fr; gap: 0; }
+  .kpi-col { border-right: none; border-bottom: 1px solid #1e1e1e; padding: 14px 0; }
+  .kpi-col:first-child { padding-top: 0; }
+  .kpi-col:last-child { border-bottom: none; padding-bottom: 0; }
+  .kpi-val, .kpi-col:first-child .kpi-val { font-size: 38px; }
+  .parts-hero { flex-direction: column; align-items: flex-start; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo"><div class="logo-dot"></div>IPHONE FLIP</div>
+  <div class="hdate" id="hdate"></div>
+</header>
+
+<main>
+
+<!-- ════════ TAB : TÉLÉPHONES ════════ -->
+<div class="tab-page active" id="tab-phones">
+  <div class="sec">Tableau de bord</div>
+  <div class="hero-card">
+    <div class="kpi-row">
+      <div class="kpi-col">
+        <div class="kpi-label">Valeur business</div>
+        <div class="kpi-val" id="kv-biz">—</div>
+        <div class="kpi-sub">cash + reventes</div>
+      </div>
+      <div class="kpi-col">
+        <div class="kpi-label">Cash disponible <button class="kpi-edit" onclick="openCash()">✎</button></div>
+        <div class="kpi-val" id="kv-cash">—</div>
+        <div class="kpi-sub">synchronisé auto</div>
+      </div>
+      <div class="kpi-col">
+        <div class="kpi-label">Gain potentiel</div>
+        <div class="kpi-val" id="kv-marge">—</div>
+        <div class="kpi-sub">si tout vendu</div>
+      </div>
+    </div>
+    <div class="mini-row">
+      <div class="mini-stat green">Bénéfice réalisé : <b id="ms-benef">—</b></div>
+      <div class="mini-stat">Stock pièces : <b id="ms-parts">—</b></div>
+      <div class="mini-stat">En cours : <b id="ms-count">—</b></div>
+    </div>
+    <div class="chart-outer">
+      <canvas id="chart" height="200"></canvas>
+      <div class="tooltip" id="tooltip">
+        <div class="tt-label" id="tt-label"></div>
+        <div class="tt-marge" id="tt-marge"></div>
+        <div class="tt-total" id="tt-total"></div>
+      </div>
+    </div>
+    <div class="chart-foot">Marge nette par téléphone — survolez pour les détails</div>
+  </div>
+
+  <div class="sec">Mes téléphones</div>
+  <div class="grid" id="phone-grid"></div>
+  <div class="form-card">
+    <button class="ftoggle" onclick="toggleForm('phoneform')"><span>+ Acheter un téléphone</span><span class="ficon" id="phoneform-icon">+</span></button>
+    <div class="fbody" id="phoneform">
+      <div class="fnote">À l'achat, le cash baisse automatiquement. Si le vendeur annule, supprime le téléphone et le cash revient.</div>
+      <div class="fgrid">
+        <div class="fg"><label>Modèle</label>
+          <select id="f-model" onchange="phoneModelPick()">
+            <option value="">— Choisir —</option>
+            <option>iPhone 14 Pro</option><option>iPhone 14 Pro Max</option>
+            <option>iPhone 15 Pro</option><option>iPhone 15 Pro Max</option>
+            <option>iPhone 16 Pro</option><option>iPhone 16 Pro Max</option>
+          </select>
+        </div>
+        <div class="fg"><label>Prix achat (€)</label><input type="number" id="f-achat" placeholder="265" step="0.01" oninput="prevCalc()"></div>
+        <div class="fg"><label>Frais Vinted (€)</label><input type="number" id="f-vinted" placeholder="auto" step="0.01" oninput="prevCalc()"></div>
+        <div class="fg"><label>Écran orig. revendu (€)</label><input type="number" id="f-ecran" placeholder="0" step="0.01" oninput="prevCalc()"></div>
+        <div class="fg"><label>Revente Swappy (€)</label><input type="number" id="f-rev" placeholder="auto" step="0.01" oninput="prevCalc()"></div>
+        <div class="fg"><label>Statut</label>
+          <select id="f-stat"><option value="encours">En cours</option><option value="revendu">Revendu</option></select>
+        </div>
+      </div>
+      <div style="font-size:10px;color:#444;text-transform:uppercase;letter-spacing:.1em;font-weight:600;margin-bottom:8px">Réparations (achat direct)</div>
+      <div id="rrows"></div>
+      <button class="addrep" onclick="addRep()">+ Ajouter une pièce</button>
+      <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+        <button class="btn btn-primary" onclick="addPhone()">Enregistrer</button>
+        <span class="fprev" id="fprev"></span>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec">Référence Swappy</div>
+  <details>
+    <summary>Prix de rachat (mes 6 modèles)</summary>
+    <div class="reftbl"><table>
+      <thead><tr><th>Modèle</th><th>Aucun signe</th><th>Signes min.</th><th>Usure</th></tr></thead>
+      <tbody id="reftbody"></tbody>
+    </table></div>
+  </details>
+</div>
+
+<!-- ════════ TAB : PIÈCES ════════ -->
+<div class="tab-page" id="tab-parts">
+  <div class="sec">Stock de pièces</div>
+  <div class="parts-hero">
+    <div class="ph-main">
+      <div class="ph-label">Valeur totale du stock</div>
+      <div class="ph-val" id="parts-total">—</div>
+      <div class="ph-sub" id="parts-count"></div>
+    </div>
+  </div>
+
+  <div class="sec">Mes pièces</div>
+  <div class="grid" id="parts-grid"></div>
+  <div class="form-card">
+    <button class="ftoggle" onclick="toggleForm('partform')"><span>+ Acheter des pièces</span><span class="ficon" id="partform-icon">+</span></button>
+    <div class="fbody" id="partform">
+      <div class="fnote">Le prix se pré-remplit selon le modèle (tes tarifs fournisseur). À l'achat, le cash baisse. Pour monter une pièce sur un téléphone, utilise « Utiliser ».</div>
+      <div class="fgrid">
+        <div class="fg"><label>Type</label>
+          <select id="pt-type" onchange="fillPartPrice()">
+            <option>Écran</option><option>Batterie</option><option>Châssis</option><option>Vitre arrière</option><option>Autre</option>
+          </select>
+        </div>
+        <div class="fg"><label>Modèle</label>
+          <select id="pt-model" onchange="fillPartPrice()">
+            <option value="">— Choisir —</option>
+            <option>iPhone 14 Pro</option><option>iPhone 14 Pro Max</option>
+            <option>iPhone 15 Pro</option><option>iPhone 15 Pro Max</option>
+            <option>iPhone 16 Pro</option><option>iPhone 16 Pro Max</option>
+          </select>
+        </div>
+        <div class="fg"><label>Coût unitaire (€)</label><input type="number" id="pt-cost" placeholder="auto" step="0.01"></div>
+        <div class="fg"><label>Quantité</label><input type="number" id="pt-qty" value="1" min="1" step="1"></div>
+      </div>
+      <button class="btn btn-primary" onclick="addPart()">Ajouter au stock</button>
+    </div>
+  </div>
+</div>
+
+</main>
+
+<!-- BOTTOM TAB BAR -->
+<nav class="tabbar">
+  <button class="tabbtn active" id="nav-phones" onclick="showTab('phones')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="20" x="5" y="2" rx="2"/><path d="M12 18h.01"/></svg>
+    <span>Téléphones</span>
+  </button>
+  <button class="tabbtn" id="nav-parts" onclick="showTab('parts')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+    <span>Pièces</span>
+    <span class="tab-badge" id="parts-badge" style="display:none">0</span>
+  </button>
+</nav>
+
+<!-- MODAL CASH -->
+<div class="overlay" id="modal-cash">
+  <div class="modal">
+    <h3>Cash disponible</h3>
+    <p>Indique le cash que tu as réellement maintenant. Ensuite chaque achat le baisse et chaque vente le monte, tout seul.</p>
+    <div class="mform"><div class="fg"><label>Cash actuel (€)</label><input type="number" id="m-cash" step="0.01"></div></div>
+    <div class="mactions">
+      <button class="btn" onclick="closeOverlay('modal-cash')">Annuler</button>
+      <button class="btn btn-primary" style="padding:7px 20px" onclick="saveCash()">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL EDIT PHONE -->
+<div class="overlay" id="modal-phone">
+  <div class="modal">
+    <h3>Modifier</h3>
+    <p id="mp-sub"></p>
+    <div class="mform">
+      <div class="fg"><label>Revente estimée / réelle (€)</label><input type="number" id="m-rev" step="0.01"></div>
+      <div class="fg"><label>Statut</label>
+        <select id="m-stat"><option value="encours">En cours</option><option value="revendu">Revendu</option><option value="perte">Perte</option></select>
+      </div>
+    </div>
+    <div class="mactions">
+      <button class="btn" onclick="closeOverlay('modal-phone')">Annuler</button>
+      <button class="btn btn-primary" style="padding:7px 20px" onclick="savePhone()">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL USE PART -->
+<div class="overlay" id="modal-use">
+  <div class="modal">
+    <h3>Monter la pièce sur…</h3>
+    <p id="mu-sub"></p>
+    <div id="mu-list"></div>
+    <div class="mactions"><button class="btn" onclick="closeOverlay('modal-use')">Annuler</button></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── SWAPPY (6 modèles) ────────────────────────────────────────────────────────
+const SWAPPY = [
+  {m:'iPhone 14 Pro',s1:386,s2:349,s3:309},{m:'iPhone 14 Pro Max',s1:426,s2:363,s3:331},
+  {m:'iPhone 15 Pro',s1:470,s2:445,s3:391},{m:'iPhone 15 Pro Max',s1:561,s2:520,s3:485},
+  {m:'iPhone 16 Pro',s1:662,s2:620,s3:570},{m:'iPhone 16 Pro Max',s1:760,s2:708,s3:666},
+];
+// ── PRIX FOURNISSEUR (écrans = ta photo / batt+châssis = contexte) ─────────────
+const PART_PRICES = {
+  'iPhone 14 Pro':     {'Écran':38.00,'Batterie':15,'Châssis':25},
+  'iPhone 14 Pro Max': {'Écran':30.98,'Batterie':17,'Châssis':30},
+  'iPhone 15 Pro':     {'Écran':38.09,'Batterie':18,'Châssis':30},
+  'iPhone 15 Pro Max': {'Écran':30.98,'Batterie':18,'Châssis':35},
+  'iPhone 16 Pro':     {'Écran':51.63,'Batterie':20,'Châssis':35},
+  'iPhone 16 Pro Max': {'Écran':42.11,'Batterie':20,'Châssis':40},
+};
+
+// ── STATE ─────────────────────────────────────────────────────────────────────
+const DEFAULT = {
+  cashBase: 0, _init: 1100, nextPhoneId: 4, nextPartId: 1,
+  phones: [
+    { id:1, model:'iPhone 15 Pro',    achat:319.65, vinted:0, repairs:[{type:'Écran',cost:33,fromStock:false}], ecran:60, revente:470, statut:'encours' },
+    { id:2, model:'iPhone 14 Pro Max',achat:174.49, vinted:0, repairs:[{type:'Écran',cost:28,fromStock:false},{type:'Batterie',cost:17,fromStock:false},{type:'Châssis',cost:30,fromStock:false}], ecran:42, revente:426, statut:'encours' },
+    { id:3, model:'iPhone 16 Pro',    achat:265,    vinted:0, repairs:[{type:'Écran',cost:40,fromStock:false}], ecran:0, revente:662, statut:'encours' },
+  ],
+  parts: []
+};
+
+let S;
+try { S = JSON.parse(localStorage.getItem('iflip6') || 'null') || structuredClone(DEFAULT); }
+catch { S = structuredClone(DEFAULT); }
+if (!S.parts) S.parts = [];
+function save() { localStorage.setItem('iflip6', JSON.stringify(S)); }
+
+// ── MODÈLE FINANCIER ──────────────────────────────────────────────────────────
+function costBasis(p) {
+  const rep = p.repairs.reduce((s,r) => s + +r.cost, 0);
+  return +p.achat + +(p.vinted||0) + rep - +(p.ecran||0);
+}
+function marge(p) { return +p.revente - costBasis(p); }
+function partsStockValue() { return S.parts.reduce((s,pt)=>s + +pt.cost*Math.max(0,pt.qtyBought-pt.qtyUsed),0); }
+function phonesStockValue() { return S.phones.filter(p=>p.statut==='encours').reduce((s,p)=>s+costBasis(p),0); }
+// flux qui dépendent des listes (hors cashBase)
+function flows() {
+  let spent=0, inflow=0;
+  for (const p of S.phones) {
+    spent += +p.achat + +(p.vinted||0);
+    for (const r of p.repairs) if (!r.fromStock) spent += +r.cost;
+    inflow += +(p.ecran||0);
+    if (p.statut === 'revendu') inflow += +p.revente;
+  }
+  for (const pt of S.parts) spent += +pt.cost * +pt.qtyBought;
+  return { spent, inflow };
+}
+function cashNow() { const f = flows(); return +S.cashBase - f.spent + f.inflow; }
+function setCash(x) { const f = flows(); S.cashBase = x + f.spent - f.inflow; } // back-solve, garde tout cohérent
+function beneficeRealise() { return S.phones.filter(p=>p.statut==='revendu').reduce((s,p)=>s+marge(p),0); }
+function gainPotentiel() { return S.phones.filter(p=>p.statut==='encours').reduce((s,p)=>s+marge(p),0); }
+function reventesEnCours() { return S.phones.filter(p=>p.statut==='encours').reduce((s,p)=>s+ +p.revente,0); }
+function businessValue() { return cashNow() + reventesEnCours(); } // cash + ce que tu récupères en revendant
+
+// init cash once
+if (S._init !== undefined) { setCash(S._init); delete S._init; save(); }
+
+// ── FORMAT ────────────────────────────────────────────────────────────────────
+function e(n){ return (+n).toFixed(2).replace('.',',')+' €'; }
+function es(n){ return (n>=0?'+':'')+Math.round(n)+' €'; }
+function k(n){ return Math.round(n).toLocaleString('fr-FR')+' €'; }
+
+// ── TAB SWITCH ────────────────────────────────────────────────────────────────
+function showTab(t) {
+  document.getElementById('tab-phones').classList.toggle('active', t==='phones');
+  document.getElementById('tab-parts').classList.toggle('active', t==='parts');
+  document.getElementById('nav-phones').classList.toggle('active', t==='phones');
+  document.getElementById('nav-parts').classList.toggle('active', t==='parts');
+  window.scrollTo(0,0);
+  if (t==='phones') setTimeout(drawChart, 30);
+}
+
+// ── DASHBOARD ─────────────────────────────────────────────────────────────────
+function renderDash() {
+  document.getElementById('kv-biz').textContent   = k(businessValue());
+  document.getElementById('kv-cash').textContent  = k(cashNow());
+  document.getElementById('kv-marge').textContent = es(gainPotentiel());
+  document.getElementById('ms-benef').textContent = es(beneficeRealise());
+  document.getElementById('ms-parts').textContent = k(partsStockValue());
+  document.getElementById('ms-count').textContent = S.phones.filter(p=>p.statut==='encours').length;
+  drawChart();
+}
+
+// ── CHART ─────────────────────────────────────────────────────────────────────
+let CD = null;
+function drawChart(hoverX) {
+  const canvas = document.getElementById('chart');
+  if (!canvas.offsetWidth) return;
+  const ctx = canvas.getContext('2d');
+  const phones = S.phones.filter(p=>p.statut!=='perte');
+  const W = canvas.offsetWidth, H = 200, dpr = window.devicePixelRatio||1;
+  canvas.width = W*dpr; canvas.height = H*dpr; ctx.setTransform(dpr,0,0,dpr,0,0); ctx.clearRect(0,0,W,H);
+  if (!phones.length) { CD=null; ctx.fillStyle='#333';ctx.font='13px Inter';ctx.textAlign='center';ctx.fillText('Aucun téléphone en cours',W/2,H/2); return; }
+  const PL=52,PR=16,PT=18,PB=28, cW=W-PL-PR, cH=H-PT-PB;
+  const ms = phones.map(marge);
+  const maxM = Math.max(...ms,200)*1.08, minM = Math.min(0,...ms), rng = maxM-minM||1, n=phones.length;
+  const xs = phones.map((_,i)=> PL + (n===1?cW/2:i/(n-1)*cW));
+  const ys = ms.map(m=> PT + (1-(m-minM)/rng)*cH);
+  CD = {phones,xs,ys,ms,W,PL,PR,PT,cH,minM,rng};
+  const steps=[0,100,200,300,400,500].filter(v=>v>minM-10&&v<maxM);
+  ctx.font='11px Inter,sans-serif'; ctx.textAlign='right';
+  steps.forEach(v=>{const y=PT+(1-(v-minM)/rng)*cH;ctx.strokeStyle='#1a1a1a';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(PL,y);ctx.lineTo(W-PR,y);ctx.stroke();ctx.fillStyle='#444';ctx.fillText(v+' €',PL-5,y+4);});
+  const mk=()=>{ctx.beginPath();ctx.moveTo(xs[0],ys[0]);for(let i=1;i<n;i++){const mx=(xs[i-1]+xs[i])/2;ctx.bezierCurveTo(mx,ys[i-1],mx,ys[i],xs[i],ys[i]);}};
+  mk();ctx.lineTo(xs[n-1],PT+cH);ctx.lineTo(xs[0],PT+cH);ctx.closePath();
+  const g=ctx.createLinearGradient(0,PT,0,PT+cH);g.addColorStop(0,'rgba(255,255,255,.13)');g.addColorStop(1,'rgba(255,255,255,0)');ctx.fillStyle=g;ctx.fill();
+  mk();ctx.strokeStyle='#fff';ctx.lineWidth=2.5;ctx.lineJoin='round';ctx.lineCap='round';ctx.stroke();
+  phones.forEach((p,i)=>{const col=ms[i]>=150?'#fff':ms[i]>=100?'#ffb300':'#ff4444';ctx.beginPath();ctx.arc(xs[i],ys[i],5,0,6.3);ctx.fillStyle=col;ctx.fill();ctx.strokeStyle='#0d0d0d';ctx.lineWidth=3;ctx.stroke();ctx.textAlign='center';ctx.fillStyle='#444';ctx.font='11px Inter,sans-serif';ctx.fillText(p.model.replace('iPhone ',''),xs[i],H-5);});
+  if (hoverX!==undefined && hoverX>=PL && hoverX<=W-PR) {
+    const v=interpAt(hoverX);ctx.save();ctx.setLineDash([4,4]);ctx.strokeStyle='rgba(255,255,255,.18)';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(hoverX,PT);ctx.lineTo(hoverX,PT+cH);ctx.stroke();ctx.restore();
+    const col=v.m>=150?'#fff':v.m>=100?'#ffb300':'#ff4444';ctx.beginPath();ctx.arc(hoverX,v.cy,7,0,6.3);ctx.fillStyle=col;ctx.fill();ctx.strokeStyle='#0d0d0d';ctx.lineWidth=3;ctx.stroke();
+  }
+}
+function interpAt(mx){
+  if(!CD)return{m:0,cy:0,cumul:0,label:''};
+  const{xs,ys,ms,phones,PT,cH,minM,rng}=CD,n=xs.length;
+  if(n===1)return{m:ms[0],cy:ys[0],cumul:ms[0],label:phones[0].model};
+  if(mx<=xs[0])return{m:ms[0],cy:ys[0],cumul:ms[0],label:phones[0].model};
+  if(mx>=xs[n-1])return{m:ms[n-1],cy:ys[n-1],cumul:ms.reduce((a,b)=>a+b,0),label:phones[n-1].model};
+  for(let i=1;i<n;i++){if(mx<=xs[i]){const t=(mx-xs[i-1])/(xs[i]-xs[i-1]);const bt=3*t*t-2*t*t*t;const cy=ys[i-1]*(1-bt)+ys[i]*bt;const m=minM+(1-(cy-PT)/cH)*rng;const cumul=ms.slice(0,i).reduce((a,b)=>a+b,0)+ms[i-1]*(1-t)+ms[i]*t;return{m,cy,cumul,label:t<.5?phones[i-1].model:phones[i].model,between:phones[i-1].model.replace('iPhone ','')+' → '+phones[i].model.replace('iPhone ','')};}}
+  return{m:0,cy:0,cumul:0,label:''};
+}
+function initHover(){
+  const canvas=document.getElementById('chart'),tip=document.getElementById('tooltip');
+  canvas.addEventListener('mousemove',ev=>{const r=canvas.getBoundingClientRect();const mx=ev.clientX-r.left;if(!CD||mx<CD.PL||mx>CD.W-CD.PR){tip.style.opacity=0;drawChart();return;}drawChart(mx);const v=interpAt(mx);const col=v.m>=150?'#fff':v.m>=100?'#ffb300':'#ff4444';document.getElementById('tt-label').textContent=v.between||v.label;const tm=document.getElementById('tt-marge');tm.style.color=col;tm.textContent=(v.m>=0?'+':'')+Math.round(v.m)+' €';document.getElementById('tt-total').textContent='Total généré : +'+Math.round(Math.max(0,v.cumul))+' €';const wr=canvas.parentElement.getBoundingClientRect();tip.style.left=Math.min(Math.max(mx,80),wr.width-80)+'px';tip.style.opacity=1;});
+  canvas.addEventListener('mouseleave',()=>{tip.style.opacity=0;drawChart();});
+}
+
+// ── PARTS ─────────────────────────────────────────────────────────────────────
+function renderParts() {
+  const active = S.parts.filter(pt => (pt.qtyBought-pt.qtyUsed) > 0);
+  const totalQty = active.reduce((s,pt)=>s+(pt.qtyBought-pt.qtyUsed),0);
+  document.getElementById('parts-total').textContent = k(partsStockValue());
+  document.getElementById('parts-count').textContent = totalQty+' pièce(s) en stock · '+active.length+' référence(s)';
+  const badge=document.getElementById('parts-badge');
+  if(totalQty>0){badge.style.display='block';badge.textContent=totalQty;} else badge.style.display='none';
+
+  const grid = document.getElementById('parts-grid');
+  if (!active.length) { grid.innerHTML='<div class="empty">Aucune pièce en stock. Ajoute tes achats ci-dessous — les prix se remplissent tout seuls.</div>'; return; }
+  grid.innerHTML = active.map(pt => {
+    const rem = pt.qtyBought - pt.qtyUsed;
+    const val = +pt.cost * rem;
+    return `
+    <div class="card">
+      <div class="chead">
+        <div>
+          <div class="ctitle">${pt.model||'Universel'} <small>· ${pt.type}</small></div>
+          <div class="cmeta">${e(pt.cost)} l'unité · valeur stock ${e(val)}</div>
+        </div>
+        <div class="cright">
+          <div class="badge blue">${rem} en stock</div>
+        </div>
+      </div>
+      <div class="cbody open" style="border-top:1px solid #1a1a1a">
+        <div class="cactions" style="align-items:center">
+          <div class="qty">
+            <button onclick="bumpPart(${pt.id},-1)">−</button><span>${rem}</span><button onclick="bumpPart(${pt.id},1)">+</button>
+          </div>
+          <button class="btn btn-blue" onclick="openUse(${pt.id})">Utiliser sur un tél</button>
+          <button class="btn btn-del" onclick="delPart(${pt.id})">🗑</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+function fillPartPrice() {
+  const t=document.getElementById('pt-type').value, m=document.getElementById('pt-model').value, c=document.getElementById('pt-cost');
+  if (m && PART_PRICES[m] && PART_PRICES[m][t]!=null) c.value = PART_PRICES[m][t];
+}
+function addPart() {
+  const type=document.getElementById('pt-type').value, model=document.getElementById('pt-model').value;
+  const cost=parseFloat(document.getElementById('pt-cost').value), qty=parseInt(document.getElementById('pt-qty').value)||1;
+  if (isNaN(cost)||cost<=0) { toast('⚠ Indique le coût de la pièce'); return; }
+  if (!model) { toast('⚠ Choisis le modèle'); return; }
+  S.parts.push({ id:S.nextPartId++, type, model, cost, qtyBought:qty, qtyUsed:0 });
+  save(); renderAll(); toast(`🔧 ${qty}× ${type} ${model.replace('iPhone ','')} — cash −${e(cost*qty)}`);
+  document.getElementById('pt-cost').value=''; document.getElementById('pt-qty').value='1';
+}
+function bumpPart(id,d) {
+  const pt=S.parts.find(x=>x.id===id); if(!pt) return;
+  if (d>0) { pt.qtyBought++; save(); renderAll(); toast(`Stock +1 — cash −${e(pt.cost)}`); }
+  else { if (pt.qtyBought-1 < pt.qtyUsed) return; pt.qtyBought--; save(); renderAll(); toast(`Stock −1 — cash +${e(pt.cost)}`); }
+}
+function delPart(id) {
+  const pt=S.parts.find(x=>x.id===id); if(!pt) return;
+  if (pt.qtyUsed>0) { if(!confirm('Des pièces ont déjà été montées sur des téléphones. Retirer du stock les pièces restantes ?')) return; pt.qtyBought=pt.qtyUsed; }
+  else { if(!confirm('Supprimer cette pièce du stock ? Le cash sera recrédité.')) return; S.parts=S.parts.filter(x=>x.id!==id); }
+  save(); renderAll(); toast('Stock mis à jour');
+}
+// Utiliser une pièce sur un téléphone
+let usePartId=null;
+function openUse(id) {
+  const pt=S.parts.find(x=>x.id===id); if(!pt) return; usePartId=id;
+  document.getElementById('mu-sub').textContent=`${pt.type} ${pt.model||''} · ${e(pt.cost)} — sur quel téléphone ?`;
+  const enc=S.phones.filter(p=>p.statut==='encours');
+  const list=document.getElementById('mu-list');
+  list.innerHTML = enc.length ? enc.map(p=>`<button class="use-opt" onclick="doUse(${p.id})">${p.model}<small>Coût actuel ${e(costBasis(p))} · marge ${es(marge(p))}</small></button>`).join('') : '<div class="empty">Aucun téléphone en cours.</div>';
+  document.getElementById('modal-use').classList.add('open');
+}
+function doUse(phoneId) {
+  const pt=S.parts.find(x=>x.id===usePartId), p=S.phones.find(x=>x.id===phoneId);
+  if (!pt||!p) return;
+  if ((pt.qtyBought-pt.qtyUsed)<=0) { toast('⚠ Plus de stock'); return; }
+  pt.qtyUsed++; p.repairs.push({type:pt.type,cost:+pt.cost,fromStock:true});
+  save(); renderAll(); closeOverlay('modal-use'); toast(`✅ ${pt.type} monté sur ${p.model}`);
+}
+
+// ── PHONES ────────────────────────────────────────────────────────────────────
+function renderPhones() {
+  const g=document.getElementById('phone-grid');
+  if (!S.phones.length) { g.innerHTML='<div class="empty">Aucun téléphone. Ajoutes-en un ci-dessous.</div>'; return; }
+  g.innerHTML = S.phones.map(p=>{
+    const cb=costBasis(p), m=marge(p);
+    const cls = m>=150?'':m>=100?'warn':'neg';
+    const pct = Math.min(100,Math.max(0,(m/450)*100));
+    const repStr = p.repairs.length ? p.repairs.map(r=>r.type+' '+e(+r.cost)+(r.fromStock?' (stock)':'')).join(' · ') : '—';
+    const pc={encours:'p-enc',revendu:'p-rev',perte:'p-per'}[p.statut], pt={encours:'En cours',revendu:'Revendu',perte:'Perte'}[p.statut];
+    return `
+    <div class="card">
+      <div class="chead clik" onclick="toggleBody(${p.id})">
+        <div>
+          <div class="ctitle">${p.model}</div>
+          <div class="cmeta">Acheté ${e(p.achat)} · ${repStr}</div>
+        </div>
+        <div class="cright"><div class="badge${cls?' '+cls:''}">${es(m)}</div><div class="pill ${pc}">${pt}</div></div>
+      </div>
+      <div class="barwrap"><div class="bartrack"><div class="barfill${cls?' '+cls:''}" style="width:${pct}%"></div></div></div>
+      <div class="cbody" id="pb${p.id}">
+        <div class="dgrid">
+          <div><div class="dl">Achat</div><div class="dv">${e(p.achat)}</div></div>
+          <div><div class="dl">Frais Vinted</div><div class="dv m">${e(p.vinted||0)}</div></div>
+          <div><div class="dl">Réparations</div><div class="dv a">${e(p.repairs.reduce((s,r)=>s+ +r.cost,0))}</div></div>
+          <div><div class="dl">Écran revendu</div><div class="dv m">−${e(p.ecran||0)}</div></div>
+          <div><div class="dl">Coût total</div><div class="dv">${e(cb)}</div></div>
+          <div><div class="dl">Revente</div><div class="dv">${e(p.revente)}</div></div>
+          <div><div class="dl">Marge nette</div><div class="dv${cls?' '+(cls==='neg'?'r':'a'):''}">${es(m)}</div></div>
+        </div>
+        <div class="cactions">
+          <button class="btn" onclick="openEdit(${p.id})">✏️ Modifier</button>
+          <button class="btn btn-blue" onclick="markSold(${p.id})">✅ Vendu</button>
+          <button class="btn btn-del" onclick="delPhone(${p.id})">🗑 Annuler / supprimer</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+function toggleBody(id){ document.getElementById('pb'+id).classList.toggle('open'); }
+function renderAll(){ renderDash(); renderParts(); renderPhones(); }
+
+// ── ADD PHONE ─────────────────────────────────────────────────────────────────
+function toggleForm(id){ document.getElementById(id).classList.toggle('open'); document.getElementById(id+'-icon').classList.toggle('open'); }
+function phoneModelPick(){
+  const m=document.getElementById('f-model').value, ref=SWAPPY.find(x=>x.m===m);
+  if (ref && !document.getElementById('f-rev').value) document.getElementById('f-rev').value=ref.s1;
+  prevCalc();
+}
+function addRep(t='',c=''){ const id='r'+Date.now();const d=document.createElement('div');d.className='rrow';d.id=id;d.innerHTML=`<select onchange="prevCalc()">${['Écran','Batterie','Châssis','Vitre arrière','Autre'].map(x=>`<option${x===t?' selected':''}>${x}</option>`).join('')}</select><input type="number" placeholder="Coût €" value="${c}" step="0.01" oninput="prevCalc()"><button class="rdel" onclick="document.getElementById('${id}').remove();prevCalc()">×</button>`;document.getElementById('rrows').appendChild(d); }
+function getReps(){ return Array.from(document.querySelectorAll('#rrows .rrow')).map(r=>({type:r.querySelector('select').value,cost:parseFloat(r.querySelector('input').value)||0,fromStock:false})); }
+function prevCalc(){ const a=parseFloat(document.getElementById('f-achat').value)||0;const v=parseFloat(document.getElementById('f-vinted').value)||(a*0.015+4);const ec=parseFloat(document.getElementById('f-ecran').value)||0;const rep=getReps().reduce((s,r)=>s+r.cost,0);const rv=parseFloat(document.getElementById('f-rev').value)||0;const inv=a+v+rep-ec,m=rv-inv;document.getElementById('fprev').textContent=a&&rv?`Investi: ${e(inv)} → Marge: ${es(m)}`:''; }
+function addPhone(){
+  const model=document.getElementById('f-model').value,achat=parseFloat(document.getElementById('f-achat').value),revente=parseFloat(document.getElementById('f-rev').value);
+  if(!model||!achat||!revente){ toast('⚠ Modèle, achat et revente requis'); return; }
+  const vinted=parseFloat(document.getElementById('f-vinted').value)||(+(achat*0.015+4).toFixed(2));
+  S.phones.push({id:S.nextPhoneId++,model,achat,vinted,repairs:getReps(),ecran:parseFloat(document.getElementById('f-ecran').value)||0,revente,statut:document.getElementById('f-stat').value});
+  save(); renderAll(); toast(`📱 ${model} — cash −${e(achat+vinted)}`);
+  ['f-model','f-achat','f-vinted','f-ecran','f-rev'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('rrows').innerHTML=''; document.getElementById('fprev').textContent='';
+}
+
+// ── EDIT / SELL / DELETE ──────────────────────────────────────────────────────
+let editId=null;
+function openEdit(id){ const p=S.phones.find(x=>x.id===id);if(!p)return;editId=id;document.getElementById('mp-sub').textContent=p.model;document.getElementById('m-rev').value=p.revente;document.getElementById('m-stat').value=p.statut;document.getElementById('modal-phone').classList.add('open'); }
+function savePhone(){ const p=S.phones.find(x=>x.id===editId);if(!p)return;p.revente=parseFloat(document.getElementById('m-rev').value)||p.revente;p.statut=document.getElementById('m-stat').value;save();renderAll();closeOverlay('modal-phone');toast('✅ Mis à jour'); }
+function markSold(id){ const p=S.phones.find(x=>x.id===id);if(!p)return;p.statut='revendu';save();renderAll();toast(`✅ Vendu — cash +${e(p.revente)}`); }
+function delPhone(id){ const p=S.phones.find(x=>x.id===id);if(!p)return;if(!confirm('Supprimer / annuler ce téléphone ? Le cash sera recrédité.'))return;S.phones=S.phones.filter(x=>x.id!==id);save();renderAll();toast('Téléphone supprimé — cash recrédité'); }
+
+// ── CASH ──────────────────────────────────────────────────────────────────────
+function openCash(){ document.getElementById('m-cash').value=Math.round(cashNow()*100)/100;document.getElementById('modal-cash').classList.add('open'); }
+function saveCash(){ const v=parseFloat(document.getElementById('m-cash').value);if(isNaN(v)){toast('⚠ Montant invalide');return;}setCash(v);save();renderAll();closeOverlay('modal-cash');toast('💰 Cash réglé'); }
+
+// ── UTILS ─────────────────────────────────────────────────────────────────────
+function closeOverlay(id){ document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('.overlay').forEach(o=>o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('open')}));
+function toast(msg){ const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2600); }
+
+document.getElementById('reftbody').innerHTML=SWAPPY.map(r=>`<tr><td>${r.m}</td><td>${r.s1} €</td><td>${r.s2} €</td><td>${r.s3} €</td></tr>`).join('');
+document.getElementById('hdate').textContent=new Date().toLocaleDateString('fr-FR',{day:'numeric',month:'short',year:'numeric'});
+
+renderAll();
+initHover();
+window.addEventListener('resize',()=>drawChart());
+</script>
+</body>
+</html>
